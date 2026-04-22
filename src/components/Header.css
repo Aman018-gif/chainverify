@@ -1,0 +1,110 @@
+.header {
+  background: rgba(6, 10, 30, 0.85);
+  border-bottom: 1px solid var(--border-default);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  display: flex;
+  animation: float 4s ease-in-out infinite;
+}
+.logo-text {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  line-height: 1.2;
+}
+.logo-sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  display: block;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.network-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--accent-green);
+  background: var(--accent-green-dim);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+.network-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse-glow 2s infinite;
+}
+.role-badges {
+  display: flex;
+  gap: 4px;
+}
+.badge-role {
+  font-size: 0.68rem;
+  padding: 3px 8px;
+}
+.badge-admin { color: #3b82f6; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); }
+.badge-manufacturer { color: #00d4ff; background: var(--accent-cyan-dim); border: 1px solid rgba(0,212,255,0.25); }
+.badge-distributor { color: #a855f7; background: var(--accent-purple-dim); border: 1px solid rgba(168,85,247,0.25); }
+.badge-seller { color: #ff8c42; background: rgba(255,140,66,0.12); border: 1px solid rgba(255,140,66,0.25); }
+.wallet-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wallet-address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: "Space Grotesk", monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.wallet-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+.disconnect-btn {
+  padding: 7px 10px !important;
+}
+@media (max-width: 640px) {
+  .role-badges, .network-badge { display: none; }
+  .header-inner { padding: 0 1rem; }
+}

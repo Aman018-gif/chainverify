@@ -6,6 +6,10 @@ import DistributorPanel from "./components/DistributorPanel";
 import SellerPanel from "./components/SellerPanel";
 import ConsumerPanel from "./components/ConsumerPanel";
 import AdminPanel from "./components/AdminPanel";
+<<<<<<< HEAD
+=======
+import ContractSetupBanner from "./components/ContractSetupBanner";
+>>>>>>> a6a5f33 (feat: implement Web3 frontend UI, graph algorithms, and QR verification)
 import { HiCube, HiTruck, HiShoppingBag, HiShieldCheck, HiCog6Tooth } from "react-icons/hi2";
 import "./App.css";
 
@@ -19,7 +23,11 @@ const TABS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("manufacturer");
+<<<<<<< HEAD
   const { account } = useBlockchain();
+=======
+  const { account, contractReady, contractConfigured } = useBlockchain();
+>>>>>>> a6a5f33 (feat: implement Web3 frontend UI, graph algorithms, and QR verification)
 
   return (
     <div className="app">
@@ -28,6 +36,7 @@ export default function App() {
       {!account ? (
         <LandingSection />
       ) : (
+<<<<<<< HEAD
         <main className="main-content">
           {/* ─── Tab Navigation ─────────────────────────── */}
           <nav className="tab-nav" id="tab-navigation">
@@ -55,6 +64,44 @@ export default function App() {
             {activeTab === "admin" && <AdminPanel />}
           </div>
         </main>
+=======
+        <>
+          {/* ── Show setup banner if contract isn't responding ── */}
+          {!contractReady && (
+            <div style={{ maxWidth: 1200, margin: "1.25rem auto 0", padding: "0 2rem" }}>
+              <ContractSetupBanner contractReady={contractReady} />
+            </div>
+          )}
+
+          <main className="main-content">
+            {/* ─── Tab Navigation ─────────────────────────── */}
+            <nav className="tab-nav" id="tab-navigation">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  id={`tab-${tab.id}`}
+                  className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{ "--tab-color": tab.color }}
+                >
+                  <tab.icon className="tab-icon" />
+                  <span className="tab-label">{tab.label}</span>
+                  {activeTab === tab.id && <span className="tab-indicator" />}
+                </button>
+              ))}
+            </nav>
+
+            {/* ─── Tab Content ────────────────────────────── */}
+            <div className="tab-content fade-in" key={activeTab}>
+              {activeTab === "manufacturer" && <ManufacturerPanel />}
+              {activeTab === "distributor" && <DistributorPanel />}
+              {activeTab === "seller" && <SellerPanel />}
+              {activeTab === "consumer" && <ConsumerPanel />}
+              {activeTab === "admin" && <AdminPanel />}
+            </div>
+          </main>
+        </>
+>>>>>>> a6a5f33 (feat: implement Web3 frontend UI, graph algorithms, and QR verification)
       )}
     </div>
   );
@@ -135,4 +182,8 @@ function LandingSection() {
       </div>
     </section>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> a6a5f33 (feat: implement Web3 frontend UI, graph algorithms, and QR verification)

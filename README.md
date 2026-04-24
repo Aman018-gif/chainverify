@@ -1,5 +1,6 @@
 # AuthChain — Anti-Counterfeit Supply Chain Authentication
 
+
 A blockchain-powered dApp that tracks premium products from **factory → distributor → seller → consumer** using NFTs (ERC-721), smart contracts, and QR code verification.
 
 ## 🏗 Architecture

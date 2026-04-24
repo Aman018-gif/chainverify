@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════════
 // ⚠️  PASTE YOUR DEPLOYED CONTRACT ADDRESS HERE
 // ══════════════════════════════════════════════════════════════
-export const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const CONTRACT_ADDRESS = "0x068F45F35A8D9D136536ef08A3542bf5660775A0";
 
 // ══════════════════════════════════════════════════════════════
 // Network Configuration — Sepolia Testnet
@@ -43,32 +43,27 @@ export const CONTRACT_ABI = [
   "function removeRole(bytes32 role, address account)",
   "function hasRole(bytes32 role, address account) view returns (bool)",
 
-  // ─── Mint Product ─────────────────────────────────────
-  "function mintProduct(string serialNumber, string modelName, string factoryId, string batchNumber, string tokenURI) returns (uint256)",
+  // ─── Create Batch ─────────────────────────────────────
+  "function createBatch(string modelName, string factoryId, string batchNumber, uint256 initialQuantity) returns (uint256)",
 
   // ─── Custody Transfers ────────────────────────────────
-  "function transferToDistributor(uint256 tokenId, address distributor)",
-  "function transferToSeller(uint256 tokenId, address seller)",
-  "function sellToConsumer(uint256 tokenId, address consumer)",
+  "function transferToDistributor(uint256 batchId, address distributor, uint256 quantity)",
+  "function transferToSeller(uint256 batchId, address seller, uint256 quantity)",
+  "function sellToConsumer(uint256 batchId, address consumer, uint256 quantity)",
 
-  // ─── Verification ─────────────────────────────────────
-  "function verifyProduct(uint256 tokenId) returns (tuple(string serialNumber, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, bytes32 productHash, bool isAuthentic, address manufacturer), tuple(address fromAddr, address toAddr, uint256 timestamp, string role)[], address)",
-  "function verifyBySerial(string serialNumber) returns (tuple(string serialNumber, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, bytes32 productHash, bool isAuthentic, address manufacturer), tuple(address fromAddr, address toAddr, uint256 timestamp, string role)[], address)",
-  "function reportCounterfeit(uint256 tokenId, string reason)",
+  // ─── Verification & View ──────────────────────────────
+  "function verifyBatch(uint256 batchId) view returns (tuple(uint256 id, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, uint256 initialQuantity, address manufacturer, bytes32 batchHash, bool isAuthentic), tuple(address fromAddr, address toAddr, uint256 quantity, uint256 timestamp, string role)[])",
+  "function verifyByBatchNumber(string batchNumber) view returns (tuple(uint256 id, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, uint256 initialQuantity, address manufacturer, bytes32 batchHash, bool isAuthentic), tuple(address fromAddr, address toAddr, uint256 quantity, uint256 timestamp, string role)[])",
 
-  // ─── View Functions ───────────────────────────────────
-  "function getProduct(uint256 tokenId) view returns (tuple(string serialNumber, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, bytes32 productHash, bool isAuthentic, address manufacturer))",
-  "function getCustodyHistory(uint256 tokenId) view returns (tuple(address fromAddr, address toAddr, uint256 timestamp, string role)[])",
-  "function getCustodyHistoryLength(uint256 tokenId) view returns (uint256)",
-  "function getTokenBySerial(string serialNumber) view returns (uint256)",
+  "function getBatch(uint256 batchId) view returns (tuple(uint256 id, string modelName, string factoryId, string batchNumber, uint256 manufacturingDate, uint256 initialQuantity, address manufacturer, bytes32 batchHash, bool isAuthentic))",
+  "function getCustodyHistory(uint256 batchId) view returns (tuple(address fromAddr, address toAddr, uint256 quantity, uint256 timestamp, string role)[])",
   "function checkMyRole() view returns (bool isAdmin, bool isManufacturer, bool isDistributor, bool isSeller)",
-  "function totalProducts() view returns (uint256)",
-  "function ownerOf(uint256 tokenId) view returns (address)",
-  "function serialExists(string) view returns (bool)",
+  "function totalBatches() view returns (uint256)",
+  "function batchExists(string) view returns (bool)",
+  "function balanceOf(address account, uint256 id) view returns (uint256)",
 
   // ─── Events ───────────────────────────────────────────
-  "event ProductMinted(uint256 indexed tokenId, string serialNumber, string modelName, string factoryId, address indexed manufacturer, uint256 timestamp)",
-  "event CustodyTransferred(uint256 indexed tokenId, address indexed from, address indexed to, string role, uint256 timestamp)",
-  "event ProductVerified(uint256 indexed tokenId, address indexed verifier, bool isAuthentic, uint256 timestamp)",
-  "event CounterfeitAlert(uint256 indexed tokenId, address indexed reporter, string reason, uint256 timestamp)",
+  "event BatchCreated(uint256 indexed batchId, string modelName, string factoryId, string batchNumber, uint256 quantity, address indexed manufacturer, uint256 timestamp)",
+  "event CustodyTransferred(uint256 indexed batchId, address indexed from, address indexed to, uint256 quantity, string role, uint256 timestamp)",
+  "event ProductSold(uint256 indexed batchId, address indexed seller, address indexed consumer, uint256 quantity, uint256 timestamp)"
 ];

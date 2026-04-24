@@ -1,91 +1,87 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts@4.9.3/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts@4.9.3/access/AccessControl.sol";
 
 /**
- * @title ProductAuth — Anti-Counterfeit Supply Chain Authentication
- * @notice ERC-721 NFT contract that tracks products from manufacturer → distributor → seller → consumer
- * @dev Uses OpenZeppelin's ERC721URIStorage for NFT functionality and AccessControl for RBAC
+ * @title ProductAuth — Anti-Counterfeit Supply Chain Authentication (Batch Edition)
+ * @notice ERC-1155 contract that tracks product batches and quantities from manufacturer → distributor → seller → consumer
  */
-contract ProductAuth is ERC721URIStorage, AccessControl {
+contract ProductAuth is ERC1155, AccessControl {
 
     // ─── Roles ───────────────────────────────────────────────
     bytes32 public constant MANUFACTURER_ROLE = keccak256("MANUFACTURER_ROLE");
     bytes32 public constant DISTRIBUTOR_ROLE  = keccak256("DISTRIBUTOR_ROLE");
     bytes32 public constant SELLER_ROLE       = keccak256("SELLER_ROLE");
 
-    // ─── Token Counter ───────────────────────────────────────
-    uint256 private _nextTokenId;
+    // ─── Batch Counter ───────────────────────────────────────
+    uint256 private _nextBatchId;
 
-    // ─── Product Data ────────────────────────────────────────
-    struct Product {
-        string  serialNumber;
+    // ─── Data Structures ─────────────────────────────────────
+    struct Batch {
+        uint256 id;
         string  modelName;
         string  factoryId;
         string  batchNumber;
         uint256 manufacturingDate;
-        bytes32 productHash;
-        bool    isAuthentic;
+        uint256 initialQuantity;
         address manufacturer;
+        bytes32 batchHash;
+        bool    isAuthentic;
     }
 
     struct CustodyRecord {
         address fromAddr;
         address toAddr;
+        uint256 quantity;
         uint256 timestamp;
         string  role;
     }
 
     // ─── Storage ─────────────────────────────────────────────
-    mapping(uint256 => Product)          public products;
-    mapping(uint256 => CustodyRecord[])  public custodyHistory;
-    mapping(string  => uint256)          public serialToTokenId;
-    mapping(string  => bool)             public serialExists;
+    mapping(uint256 => Batch)             public batches;
+    mapping(uint256 => CustodyRecord[])   public custodyHistory;
+    mapping(string  => uint256)           public batchNumberToId;
+    mapping(string  => bool)              public batchExists;
 
-    uint256 public totalProducts;
+    uint256 public totalBatches;
 
     // ─── Events ──────────────────────────────────────────────
-    event ProductMinted(
-        uint256 indexed tokenId,
-        string  serialNumber,
+    event BatchCreated(
+        uint256 indexed batchId,
         string  modelName,
         string  factoryId,
+        string  batchNumber,
+        uint256 quantity,
         address indexed manufacturer,
         uint256 timestamp
     );
 
     event CustodyTransferred(
-        uint256 indexed tokenId,
+        uint256 indexed batchId,
         address indexed from,
         address indexed to,
+        uint256 quantity,
         string  role,
         uint256 timestamp
     );
 
-    event ProductVerified(
-        uint256 indexed tokenId,
-        address indexed verifier,
-        bool    isAuthentic,
-        uint256 timestamp
-    );
-
-    event CounterfeitAlert(
-        uint256 indexed tokenId,
-        address indexed reporter,
-        string  reason,
+    event ProductSold(
+        uint256 indexed batchId,
+        address indexed seller,
+        address indexed consumer,
+        uint256 quantity,
         uint256 timestamp
     );
 
     // ─── Constructor ─────────────────────────────────────────
-    constructor() ERC721("AuthChain Product", "AUTHP") {
+    constructor() ERC1155("") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MANUFACTURER_ROLE, msg.sender);
+        _nextBatchId = 1; // Start IDs at 1
     }
 
     // ─── Role Management (Admin only) ────────────────────────
-
     function addManufacturer(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(MANUFACTURER_ROLE, account);
     }
@@ -102,183 +98,127 @@ contract ProductAuth is ERC721URIStorage, AccessControl {
         revokeRole(role, account);
     }
 
-    // ─── Stage 1: Manufacturer — Mint Product ────────────────
-
-    function mintProduct(
-        string memory serialNumber,
+    // ─── Stage 1: Manufacturer — Create Batch ────────────────
+    function createBatch(
         string memory modelName,
         string memory factoryId,
         string memory batchNumber,
-        string memory tokenURI
+        uint256 initialQuantity
     ) external onlyRole(MANUFACTURER_ROLE) returns (uint256) {
-        require(!serialExists[serialNumber], "Serial number already exists");
+        require(!batchExists[batchNumber], "Batch number already exists");
+        require(initialQuantity > 0, "Quantity must be greater than 0");
 
-        uint256 tokenId = _nextTokenId;
-        _nextTokenId++;
+        uint256 batchId = _nextBatchId++;
 
-        bytes32 pHash = keccak256(
-            abi.encodePacked(serialNumber, modelName, factoryId, batchNumber, block.timestamp, msg.sender)
+        bytes32 bHash = keccak256(
+            abi.encodePacked(batchNumber, modelName, factoryId, initialQuantity, block.timestamp, msg.sender)
         );
 
-        products[tokenId] = Product({
-            serialNumber:      serialNumber,
+        batches[batchId] = Batch({
+            id:                batchId,
             modelName:         modelName,
             factoryId:         factoryId,
             batchNumber:       batchNumber,
             manufacturingDate: block.timestamp,
-            productHash:       pHash,
-            isAuthentic:       true,
-            manufacturer:      msg.sender
+            initialQuantity:   initialQuantity,
+            manufacturer:      msg.sender,
+            batchHash:         bHash,
+            isAuthentic:       true
         });
 
-        serialToTokenId[serialNumber] = tokenId;
-        serialExists[serialNumber] = true;
-        totalProducts++;
+        batchNumberToId[batchNumber] = batchId;
+        batchExists[batchNumber] = true;
+        totalBatches++;
 
-        _safeMint(msg.sender, tokenId);
+        _mint(msg.sender, batchId, initialQuantity, "");
 
-        if (bytes(tokenURI).length > 0) {
-            _setTokenURI(tokenId, tokenURI);
-        }
-
-        custodyHistory[tokenId].push(CustodyRecord({
+        custodyHistory[batchId].push(CustodyRecord({
             fromAddr:  address(0),
             toAddr:    msg.sender,
+            quantity:  initialQuantity,
             timestamp: block.timestamp,
             role:      "Manufacturer"
         }));
 
-        emit ProductMinted(tokenId, serialNumber, modelName, factoryId, msg.sender, block.timestamp);
+        emit BatchCreated(batchId, modelName, factoryId, batchNumber, initialQuantity, msg.sender, block.timestamp);
 
-        return tokenId;
+        return batchId;
     }
 
-    // ─── Stage 3: Transfer Custody ───────────────────────────
+    // ─── Stage 2: Transfer Custody (B2B) ─────────────────────
+    function _transferBatch(uint256 batchId, address recipient, uint256 quantity, string memory roleName) internal {
+        require(balanceOf(msg.sender, batchId) >= quantity, "Insufficient batch balance");
+        
+        _safeTransferFrom(msg.sender, recipient, batchId, quantity, "");
 
-    function transferToDistributor(uint256 tokenId, address distributor) external {
-        require(ownerOf(tokenId) == msg.sender, "You are not the current owner");
+        custodyHistory[batchId].push(CustodyRecord({
+            fromAddr:  msg.sender,
+            toAddr:    recipient,
+            quantity:  quantity,
+            timestamp: block.timestamp,
+            role:      roleName
+        }));
+
+        emit CustodyTransferred(batchId, msg.sender, recipient, quantity, roleName, block.timestamp);
+    }
+
+    function transferToDistributor(uint256 batchId, address distributor, uint256 quantity) external {
         require(hasRole(DISTRIBUTOR_ROLE, distributor), "Recipient is not an authorised distributor");
-
-        _transfer(msg.sender, distributor, tokenId);
-
-        custodyHistory[tokenId].push(CustodyRecord({
-            fromAddr:  msg.sender,
-            toAddr:    distributor,
-            timestamp: block.timestamp,
-            role:      "Distributor"
-        }));
-
-        emit CustodyTransferred(tokenId, msg.sender, distributor, "Distributor", block.timestamp);
+        _transferBatch(batchId, distributor, quantity, "Distributor");
     }
 
-    function transferToSeller(uint256 tokenId, address seller) external {
-        require(ownerOf(tokenId) == msg.sender, "You are not the current owner");
+    function transferToSeller(uint256 batchId, address seller, uint256 quantity) external {
         require(hasRole(SELLER_ROLE, seller), "Recipient is not an authorised seller");
-
-        _transfer(msg.sender, seller, tokenId);
-
-        custodyHistory[tokenId].push(CustodyRecord({
-            fromAddr:  msg.sender,
-            toAddr:    seller,
-            timestamp: block.timestamp,
-            role:      "Seller"
-        }));
-
-        emit CustodyTransferred(tokenId, msg.sender, seller, "Seller", block.timestamp);
+        _transferBatch(batchId, seller, quantity, "Seller");
     }
 
-    // ─── Stage 4: Sell to Consumer ───────────────────────────
-
-    function sellToConsumer(uint256 tokenId, address consumer) external {
-        require(ownerOf(tokenId) == msg.sender, "You are not the current owner");
+    // ─── Stage 3: Sell to Consumer (B2C) ─────────────────────
+    function sellToConsumer(uint256 batchId, address consumer, uint256 quantity) external {
         require(
             hasRole(DISTRIBUTOR_ROLE, msg.sender) || hasRole(SELLER_ROLE, msg.sender),
             "Only distributors or sellers can sell to consumers"
         );
+        require(balanceOf(msg.sender, batchId) >= quantity, "Insufficient batch balance");
 
-        _transfer(msg.sender, consumer, tokenId);
+        _safeTransferFrom(msg.sender, consumer, batchId, quantity, "");
 
-        custodyHistory[tokenId].push(CustodyRecord({
+        custodyHistory[batchId].push(CustodyRecord({
             fromAddr:  msg.sender,
             toAddr:    consumer,
+            quantity:  quantity,
             timestamp: block.timestamp,
             role:      "Consumer"
         }));
 
-        emit CustodyTransferred(tokenId, msg.sender, consumer, "Consumer", block.timestamp);
+        emit ProductSold(batchId, msg.sender, consumer, quantity, block.timestamp);
     }
 
-    // ─── Verification ────────────────────────────────────────
-
-    function verifyProduct(uint256 tokenId) external returns (
-        Product memory product,
-        CustodyRecord[] memory history,
-        address currentOwner
+    // ─── Verification & View Functions ───────────────────────
+    function verifyBatch(uint256 batchId) external view returns (
+        Batch memory batch,
+        CustodyRecord[] memory history
     ) {
-        require(tokenId < _nextTokenId, "Product does not exist");
-
-        product = products[tokenId];
-        history = custodyHistory[tokenId];
-        currentOwner = ownerOf(tokenId);
-
-        bytes32 expectedHash = keccak256(
-            abi.encodePacked(
-                product.serialNumber,
-                product.modelName,
-                product.factoryId,
-                product.batchNumber,
-                product.manufacturingDate,
-                product.manufacturer
-            )
-        );
-
-        bool hashValid = (expectedHash == product.productHash);
-
-        emit ProductVerified(tokenId, msg.sender, hashValid, block.timestamp);
-
-        return (product, history, currentOwner);
+        require(batchId < _nextBatchId && batchId > 0, "Batch does not exist");
+        return (batches[batchId], custodyHistory[batchId]);
     }
-
-    function verifyBySerial(string memory serialNumber) external returns (
-        Product memory product,
-        CustodyRecord[] memory history,
-        address currentOwner
+    
+    function verifyByBatchNumber(string memory batchNumber) external view returns (
+        Batch memory batch,
+        CustodyRecord[] memory history
     ) {
-        require(serialExists[serialNumber], "Serial number not found — possible counterfeit");
-        uint256 tokenId = serialToTokenId[serialNumber];
-
-        product = products[tokenId];
-        history = custodyHistory[tokenId];
-        currentOwner = ownerOf(tokenId);
-
-        emit ProductVerified(tokenId, msg.sender, true, block.timestamp);
-
-        return (product, history, currentOwner);
+        require(batchExists[batchNumber], "Batch number not found");
+        uint256 batchId = batchNumberToId[batchNumber];
+        return (batches[batchId], custodyHistory[batchId]);
     }
 
-    function reportCounterfeit(uint256 tokenId, string memory reason) external {
-        emit CounterfeitAlert(tokenId, msg.sender, reason, block.timestamp);
+    function getBatch(uint256 batchId) external view returns (Batch memory) {
+        require(batchId < _nextBatchId && batchId > 0, "Batch does not exist");
+        return batches[batchId];
     }
 
-    // ─── View Functions ──────────────────────────────────────
-
-    function getProduct(uint256 tokenId) external view returns (Product memory) {
-        require(tokenId < _nextTokenId, "Product does not exist");
-        return products[tokenId];
-    }
-
-    function getCustodyHistory(uint256 tokenId) external view returns (CustodyRecord[] memory) {
-        require(tokenId < _nextTokenId, "Product does not exist");
-        return custodyHistory[tokenId];
-    }
-
-    function getCustodyHistoryLength(uint256 tokenId) external view returns (uint256) {
-        return custodyHistory[tokenId].length;
-    }
-
-    function getTokenBySerial(string memory serialNumber) external view returns (uint256) {
-        require(serialExists[serialNumber], "Serial number not found");
-        return serialToTokenId[serialNumber];
+    function getCustodyHistory(uint256 batchId) external view returns (CustodyRecord[] memory) {
+        require(batchId < _nextBatchId && batchId > 0, "Batch does not exist");
+        return custodyHistory[batchId];
     }
 
     function checkMyRole() external view returns (
@@ -294,9 +234,8 @@ contract ProductAuth is ERC721URIStorage, AccessControl {
     }
 
     // ─── Required Overrides ──────────────────────────────────
-
     function supportsInterface(bytes4 interfaceId)
-        public view override(ERC721URIStorage, AccessControl)
+        public view override(ERC1155, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
